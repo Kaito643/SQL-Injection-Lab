@@ -1,7 +1,5 @@
-from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password
 from django.db import connection
-from django.shortcuts import render
 from django.contrib.auth.models import User
 from rest_framework import generics
 from .serializers import UserSerializer, NoteSerializer
@@ -63,26 +61,26 @@ class CustomLoginView(APIView):
                 cursor.execute(query)
                 user = cursor.fetchone()
 
-            # if user:
-            #   user_id, db_username, db_password = user
+            if user:
+                user_id, db_username, db_password = user
 
                 # Check if the provided password matches the hashed password in the database
-            #   if check_password(password, db_password):
+                if check_password(password, db_password):
                     # Generate JWT tokens manually
-            #       try:
-            #           user_instance = User.objects.get(id=user_id)
-            #           refresh = RefreshToken.for_user(user_instance)
-            #           return Response({
-            #               "refresh": str(refresh),
-            #               "access": str(refresh.access_token),
-            #           })
-            #       except User.DoesNotExist:
-            #           logger.error(f"User with ID {user_id} does not exist.")
-            #           return Response({"error": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
-            #   else:
-            #       return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-            # else:
-            #  return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+                    try:
+                        user_instance = User.objects.get(id=user_id)
+                        refresh = RefreshToken.for_user(user_instance)
+                        return Response({
+                            "refresh": str(refresh),
+                            "access": str(refresh.access_token),
+                        })
+                    except User.DoesNotExist:
+                        logger.error(f"User with ID {user_id} does not exist.")
+                        return Response({"error": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+            else:
+                return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
         except Exception as e:
             logger.error(f"An error occurred: {str(e)}")
