@@ -56,29 +56,28 @@ class CustomLoginView(APIView):
             return Response({"error": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Manually query the database using raw SQL
+            # Manually query the database using raw SQL (vulnerable to SQL injection)
             with connection.cursor() as cursor:
-                cursor.execute(f"SELECT id, username, password FROM auth_user WHERE username = '{username}'") # %s", [username]
+                # Make both username and password vulnerable to SQL injection
+                query = f"SELECT id, username, password FROM auth_user WHERE username = '{username}' AND password = '{password}'"
+                logger.debug(f"Executing query: {query}")  # Log the query for debugging
+                cursor.execute(query)
                 user = cursor.fetchone()
 
             if user:
                 user_id, db_username, db_password = user
 
-                # Check if the provided password matches the hashed password in the database
-                if check_password(password, db_password):
-                    # Generate JWT tokens manually
-                    try:
-                        user_instance = User.objects.get(id=user_id)
-                        refresh = RefreshToken.for_user(user_instance)
-                        return Response({
-                            "refresh": str(refresh),
-                            "access": str(refresh.access_token),
-                        })
-                    except User.DoesNotExist:
-                        logger.error(f"User with ID {user_id} does not exist.")
-                        return Response({"error": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
-                else:
-                    return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+                # Generate JWT tokens manually
+                try:
+                    user_instance = User.objects.get(id=user_id)
+                    refresh = RefreshToken.for_user(user_instance)
+                    return Response({
+                        "refresh": str(refresh),
+                        "access": str(refresh.access_token),
+                    })
+                except User.DoesNotExist:
+                    logger.error(f"User with ID {user_id} does not exist.")
+                    return Response({"error": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
             else:
                 return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
