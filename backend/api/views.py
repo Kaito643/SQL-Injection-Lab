@@ -57,7 +57,7 @@ class CustomLoginView(APIView):
         try:
             # Manually query the database using raw SQL (vulnerable to SQL injection)
             with connection.cursor() as cursor:
-                query = f"SELECT id, username, password FROM auth_user WHERE username = '{username}'"
+                query = f"SELECT id, username, password FROM auth_user WHERE username = '{username}' AND password = '{password}'"
                 logger.debug(f"Executing query: {query}")  # Log the query for debugging
                 cursor.execute(query)
                 user = cursor.fetchone()
