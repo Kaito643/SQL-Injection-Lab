@@ -58,7 +58,7 @@ class CustomLoginView(APIView):
         try:
             # Manually query the database using raw SQL
             with connection.cursor() as cursor:
-                cursor.execute("SELECT id, username, password FROM auth_user WHERE username = %s", [username])
+                cursor.execute(f"SELECT id, username, password FROM auth_user WHERE username = '{username}'") # %s", [username]
                 user = cursor.fetchone()
 
             if user:
