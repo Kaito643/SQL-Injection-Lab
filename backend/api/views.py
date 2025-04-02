@@ -11,7 +11,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+import logging
 
+logger = logging.getLogger(__name__)
 
 
 class NoteListCreate(generics.ListCreateAPIView):
@@ -48,23 +50,37 @@ class CustomLoginView(APIView):
         username = request.data.get("username")
         password = request.data.get("password")
 
-        # Manually query the database using raw SQL
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT id, username, password FROM auth_user WHERE username = %s", [username])
-            user = cursor.fetchone()
+        # Check if username and password are provided
+        if not username or not password:
+            return Response({"error": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if user:
-            user_id, db_username, db_password = user
+        try:
+            # Manually query the database using raw SQL
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id, username, password FROM auth_user WHERE username = %s", [username])
+                user = cursor.fetchone()
 
-            # Check if the provided password matches the hashed password in the database
-            if check_password(password, db_password):
-                # Generate JWT tokens manually
-                refresh = RefreshToken.for_user(User.objects.get(id=user_id))
-                return Response({
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                })
+            if user:
+                user_id, db_username, db_password = user
+
+                # Check if the provided password matches the hashed password in the database
+                if check_password(password, db_password):
+                    # Generate JWT tokens manually
+                    try:
+                        user_instance = User.objects.get(id=user_id)
+                        refresh = RefreshToken.for_user(user_instance)
+                        return Response({
+                            "refresh": str(refresh),
+                            "access": str(refresh.access_token),
+                        })
+                    except User.DoesNotExist:
+                        logger.error(f"User with ID {user_id} does not exist.")
+                        return Response({"error": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
             else:
                 return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-        else:
-            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        except Exception as e:
+            logger.error(f"An error occurred: {str(e)}")
+            return Response({"error": "An internal server error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
